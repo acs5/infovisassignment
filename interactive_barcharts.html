@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Pass Rate Bar Charts (By Test Centre)</title>
+
+  <style>
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:#f5f5f5;
+    }
+    header{
+      padding:16px 18px 10px 18px;
+      background:white;
+      border-bottom:1px solid #e6e6e6;
+    }
+    h1{
+      margin:0 0 10px 0;
+      font-size:18px;
+      font-weight:700;
+    }
+    .controls{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    select, button{
+      padding:10px 12px;
+      border:1px solid #ddd;
+      border-radius:10px;
+      background:white;
+      font-size:14px;
+      cursor:pointer;
+    }
+    button:active{ transform: scale(0.98); }
+    .pill{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid #e5e5e5;
+      background:#f3f3f3;
+      font-size:13px;
+      color:#333;
+    }
+
+    main{
+      padding:14px 18px 22px 18px;
+      max-width: 1800;
+      margin: 0;
+    }
+    .card{
+      background:white;
+      border:1px solid #e6e6e6;
+      border-radius:14px;
+      padding:14px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    }
+    .imgwrap{
+      width:100%;
+      overflow:hidden;
+      border-radius:12px;
+      border:1px solid #eee;
+      background:#fafafa;
+    }
+    img{
+      display:block;
+      width:100%;
+      height:auto;
+    }
+    .note{
+      margin-top:10px;
+      font-size:13px;
+      color:#555;
+    }
+    .error{
+      margin-top:10px;
+      font-size:13px;
+      color:#b00020;
+      display:none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Average Pass Rate by Month — Bar Charts (By Test Centre)</h1>
+    <div class="controls">
+      <button id="prevBtn" aria-label="Previous centre">← Prev</button>
+      <select id="centreSelect" aria-label="Select test centre"></select>
+      <button id="nextBtn" aria-label="Next centre">Next →</button>
+      <span class="pill" id="status">Loading…</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="imgwrap">
+        <img id="chartImg" alt="Bar chart of average pass rate by month" />
+      </div>
+      <div class="error" id="errMsg">Image failed to load. Check the URL / filename.</div>
+      <div class="note">
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Convert GitHub "blob" links to RAW links:
+    // https://github.com/<user>/<repo>/blob/<sha>/file.png
+    // -> https://raw.githubusercontent.com/<user>/<repo>/<sha>/file.png
+    function blobToRaw(url){
+      try{
+        const u = new URL(url);
+        if (u.hostname !== "github.com") return url;
+        const parts = u.pathname.split("/").filter(Boolean); // [user, repo, "blob", sha, ...path]
+        if (parts.length >= 5 && parts[2] === "blob") {
+          const user = parts[0];
+          const repo = parts[1];
+          const sha = parts[3];
+          const filePath = parts.slice(4).join("/");
+          return `https://raw.githubusercontent.com/${user}/${repo}/${sha}/${filePath}`;
+        }
+      }catch(e){}
+      return url;
+    }
+
+    // ---- Your centres + URLs ----
+    // NOTE: duplicates removed (Mitchelstown appeared twice).
+    // NOTE: two missing URLs left as TODO.
+    const centreToUrl = {
+      "Athlone, Co. Westmeath": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Athlone_%20Co_%20Westmeath.png"),
+      "Ballina, Co. Mayo": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Ballina_%20Co_%20Mayo.png"),
+      "Birr, Co. Offaly": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Birr_%20Co_%20Offaly.png"),
+      "Buncrana, Co. Donegal": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Buncrana_%20Co_%20Donegal.png"),
+      "Carlow Talbot Hotel, Co. Carlow": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Carlow%20Talbot%20Hotel_%20Co_%20Carlow.png"),
+      "Carlow, Co. Carlow": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Carlow_%20Co_%20Carlow.png"),
+      "Carrick On Shannon, Co. Leitrim": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Carrick%20On%20Shannon_%20Co_%20Leitrim.png"),
+      "Castlebar, Co. Mayo": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Castlebar_%20Co_%20Mayo.png"),
+      "Cavan, Co. Cavan": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Cavan_%20Co_%20Cavan.png"),
+      "Charlestown (Dublin), Co. Dublin": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Charlestown%20_Dublin__%20Co_%20Dublin.png"),
+      "Clifden, Co. Galway": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Clifden_%20Co_%20Galway.png"),
+      "Clonmel, Co. Tipperary": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Clonmel_%20Co_%20Tipperary.png"),
+      "Cork (Wilton), Co. Cork": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Cork%20_Wilton__%20Co_%20Cork.png"),
+      "Donegal, Co. Donegal": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Donegal_%20Co_%20Donegal.png"),
+      "Drogheda, Co. Louth": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Drogheda_%20Co_%20Louth.png"),
+      "Dun Laoghaire / Deansgrange, Co. Dublin": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Dun%20Laoghaire%20_%20Deansgrange_%20Co_%20Dublin.png"),
+      "Dundalk, Co. Louth": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Dundalk_%20Co_%20Louth.png"),
+      "Dungarvan, Co. Waterford": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Dungarvan_%20Co_%20Waterford.png"),
+      "Ennis, Co. Clare": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Ennis_%20Co_%20Clare.png"),
+      "Finglas, Co. Dublin": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Finglas_%20Co_%20Dublin.png"),
+      "Galway (Carnmore), Co. Galway": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Galway%20_Carnmore__%20Co_%20Galway.png"),
+      "Galway (Westside), Co. Galway": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Galway%20_Westside__%20Co_%20Galway.png"),
+      "Gorey, Co. Wexford": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Gorey_%20Co_%20Wexford.png"),
+      "Killarney, Co. Kerry": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Killarney_%20Co_%20Kerry.png"),
+      "Killester, Co. Dublin": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Killester_%20Co_%20Dublin.png"),
+      "Kilrush, Co. Clare": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Kilrush_%20Co_%20Clare.png"),
+      "Letterkenny, Co. Donegal": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Letterkenny_%20Co_%20Donegal.png"),
+      "Limerick (Roxboro), Co. Limerick": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Limerick%20_Roxboro__%20Co_%20Limerick.png"),
+      "Longford, Co. Longford": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Longford_%20Co_%20Longford.png"),
+      "Loughrea, Co. Galway": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Loughrea_%20Co_%20Galway.png"),
+      "Mallow, Co. Cork": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Mallow_%20Co_%20Cork.png"),
+      "Mitchelstown, Co. Cork": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Mitchelstown_%20Co_%20Cork.png"),
+      "Monaghan, Co. Monaghan": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Monaghan_%20Co_%20Monaghan.png"),
+      "Mulhuddart, Co. Dublin": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Mulhuddart_%20Co_%20Dublin.png"),
+
+      // TODO: replace these two with the actual raw GitHub URLs once you add them to the repo
+      "Mullingar, Co. Westmeath": "",   // TODO
+      "Shannon, Co. Clare": "",         // TODO
+
+      "Naas, Co. Kildare": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Naas_%20Co_%20Kildare.png"),
+      "Navan, Co. Meath": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Navan_%20Co_%20Meath.png"),
+      "Nenagh, Co. Tipperary": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Nenagh_%20Co_%20Tipperary.png"),
+      "Newcastle West, Co. Limerick": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Newcastle%20West_%20Co_%20Limerick.png"),
+      "Portlaoise (Maldron Hotel), Co. Laois": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Portlaoise%20_Maldron%20Hotel__%20Co_%20Laois.png"),
+      "Portlaoise, Co. Laois": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Portlaoise_%20Co_%20Laois.png"),
+      "Raheny, Co. Dublin": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Raheny_%20Co_%20Dublin.png"),
+      "Roscommon, Co. Roscommon": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Roscommon_%20Co_%20Roscommon.png"),
+      "Skibbereen, Co. Cork": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Skibbereen_%20Co_%20Cork.png"),
+      "Sligo, Co. Sligo": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Sligo_%20Co_%20Sligo.png"),
+      "Tallaght, Co. Dublin": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Tallaght_%20Co_%20Dublin.png"),
+      "Thurles, Co. Tipperary": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Thurles_%20Co_%20Tipperary.png"),
+      "Tipperary, Co. Tipperary": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Tipperary_%20Co_%20Tipperary.png"),
+      "Tralee, Co. Kerry": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Tralee_%20Co_%20Kerry.png"),
+      "Tuam, Co. Galway": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Tuam_%20Co_%20Galway.png"),
+      "Tullamore, Co. Offaly": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Tullamore_%20Co_%20Offaly.png"),
+      "Waterford, Co. Waterford": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Waterford_%20Co_%20Waterford.png"),
+      "Wexford, Co. Wexford": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Wexford_%20Co_%20Wexford.png"),
+      "Wicklow, Co. Wicklow": blobToRaw("https://github.com/acs5/infovisassignment/blob/8762b5c47efcbe9b64238a00e8bdb148d74d6728/avg_passrate_Wicklow_%20Co_%20Wicklow.png"),
+    };
+
+    // Sorted list for dropdown + navigation
+    const centres = Object.keys(centreToUrl).sort((a,b) => a.localeCompare(b));
+    const select = document.getElementById("centreSelect");
+    const img = document.getElementById("chartImg");
+    const status = document.getElementById("status");
+    const errMsg = document.getElementById("errMsg");
+
+    centres.forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+
+    function renderCentre(name){
+      const url = centreToUrl[name] || "";
+      status.textContent = name;
+
+      errMsg.style.display = "none";
+      img.style.display = "block";
+
+      // If missing URL, show a friendly error
+      if (!url){
+        img.removeAttribute("src");
+        errMsg.textContent = "No image URL set for this centre yet (add the raw GitHub URL).";
+        errMsg.style.display = "block";
+        img.style.display = "none";
+        return;
+      }
+
+      img.src = url;
+      img.alt = `Average pass rate by month — ${name}`;
+
+      history.replaceState(null, "", `#${encodeURIComponent(name)}`);
+    }
+
+    function idx(){ return centres.indexOf(select.value); }
+    function go(delta){
+      const n = centres.length;
+      let i = idx();
+      i = (i + delta + n) % n;
+      select.value = centres[i];
+      renderCentre(select.value);
+    }
+
+    document.getElementById("prevBtn").addEventListener("click", () => go(-1));
+    document.getElementById("nextBtn").addEventListener("click", () => go(1));
+
+    select.addEventListener("change", () => renderCentre(select.value));
+
+    // Keyboard navigation
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") go(-1);
+      if (e.key === "ArrowRight") go(1);
+    });
+
+    // Default: URL hash if present, else first centre
+    const hash = decodeURIComponent(location.hash.replace("#",""));
+    const initial = (hash && centreToUrl.hasOwnProperty(hash)) ? hash : centres[0];
+    select.value = initial;
+    renderCentre(initial);
+  </script>
+</body>
+</html>
