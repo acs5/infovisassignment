@@ -83,6 +83,7 @@
 <body>
   <header>
     <h1>Ireland Driving Test Pass Rates</h1>
+    <h3>Hover a point to see the location</h3>
     <div class="controls">
       <button id="prevBtn" aria-label="Previous month">← Prev</button>
 
@@ -217,6 +218,11 @@
     nextBtn.addEventListener('click', () => go( 1));
     yearSelect.addEventListener('change', render);
     monthSelect.addEventListener('change', render);
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === "ArrowLeft") prevBtn.click();
+      if (e.key === "ArrowRight") nextBtn.click();
+    });
 
     // Default selection:
     // - Month: current visitor month
