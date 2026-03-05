@@ -248,16 +248,14 @@
       if (e.key === "ArrowRight") nextBtn.click();
     });
 
-    // Allow URL hash override: #2021-October
-    const hash = decodeURIComponent(location.hash.replace("#",""));
-    if (hash.includes("-")) {
-      const [hy, hm] = hash.split("-");
-      yearSelect.value = YEARS.includes(hy) ? hy : defaultYear;
-      monthSelect.value = MONTHS.includes(hm) ? hm : currentMonth;
-    } else {
-      yearSelect.value = defaultYear;
-      monthSelect.value = currentMonth;
-    }
+  yearSelect.value = "2026";
+  monthSelect.value = "February";
+
+  // Render once Leaflet has finished initializing
+  map.whenReady(() => {
+    render();
+    setTimeout(() => map.invalidateSize(), 0);
+  });
 
     // Legend
     const legend = L.control({position: 'bottomleft'});
@@ -273,7 +271,6 @@
     };
     legend.addTo(map);
 
-    render();
   </script>
 </body>
 </html>
